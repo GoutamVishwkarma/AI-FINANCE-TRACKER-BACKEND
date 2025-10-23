@@ -19,6 +19,10 @@ exports.getDashboardData = async (req, res) => {
             { $group: { _id: null, total: { $sum: "$amount" } } }
         ]);
 
+        // Handle empty aggregation results safely
+        const incomeTotal = (totalIncome[0]?.total) || 0;
+        const expenseTotal = (totalExpense[0]?.total) || 0;
+
         //Fetch income transactions in the last 60 days
         const last60DaysIncomeTransactions = await Income.find({
             userId,
@@ -59,11 +63,11 @@ exports.getDashboardData = async (req, res) => {
         )
         ].sort((a, b) => b.date - a.date);
 
-        //Final response
+        //Final api response
         res.status(200).json({
-           totalBalance: (totalIncome[0].total || 0) - (totalExpense[0].total || 0),
-           totalIncome: totalIncome[0].total || 0,
-           totalExpenses: totalExpense[0].total || 0,
+            totalBalance: incomeTotal - expenseTotal,
+            totalIncome: incomeTotal,
+            totalExpenses: expenseTotal,
            last30DaysExpenses: {
             total: expenseLast30Days,
             transactions: last30DaysExpenseTransactions
