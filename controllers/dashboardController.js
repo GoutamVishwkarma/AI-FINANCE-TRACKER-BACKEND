@@ -63,7 +63,7 @@ exports.getDashboardData = async (req, res) => {
         )
         ].sort((a, b) => b.date - a.date);
 
-        //Final api response
+        //Final api response ---
         res.status(200).json({
             totalBalance: incomeTotal - expenseTotal,
             totalIncome: incomeTotal,
