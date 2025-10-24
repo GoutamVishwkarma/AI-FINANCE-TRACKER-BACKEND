@@ -66,3 +66,43 @@ exports.getUserInfo = async (req, res) => {
         res.status(500).json({ message: "Error fetching user info", error: error.message });
     }
 }
+
+exports.updateUserInfo = async (req, res) => {
+    const { fullName, profileImageUrl, password, email } = req.body;
+
+    try {
+        const user = await User.findById(req.user.id);
+        if(!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Update fields if provided
+        if(fullName) user.fullName = fullName;
+        if(profileImageUrl) user.profileImageUrl = profileImageUrl;
+        if(email) {
+            // Check if email is already taken by another user
+            const existingUser = await User.findOne({ email });
+            if(existingUser && existingUser._id.toString() !== req.user.id) {
+                return res.status(400).json({ message: "Email already in use" });
+            }
+            user.email = email;
+        }
+        if(password) {
+            user.password = password; // Will be hashed by pre-save middleware
+        }
+
+        await user.save();
+
+        res.status(200).json({ 
+            message: "User info updated successfully",
+            user: {
+                id: user._id,
+                fullName: user.fullName,
+                email: user.email,
+                profileImageUrl: user.profileImageUrl
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Error updating user info", error: error.message });
+    }
+}
