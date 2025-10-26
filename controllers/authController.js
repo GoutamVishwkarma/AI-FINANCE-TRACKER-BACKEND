@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { deleteImageFromS3 } = require("../utils/s3Utils");
 
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "1h" });
@@ -78,7 +79,13 @@ exports.updateUserInfo = async (req, res) => {
 
         // Update fields if provided
         if(fullName) user.fullName = fullName;
-        if(profileImageUrl) user.profileImageUrl = profileImageUrl;
+        if(profileImageUrl) {
+            // Delete old image from S3 if exists
+            if(user.profileImageUrl) {
+                await deleteImageFromS3(user.profileImageUrl);
+            }
+            user.profileImageUrl = profileImageUrl;
+        }
         if(email) {
             // Check if email is already taken by another user
             const existingUser = await User.findOne({ email });
