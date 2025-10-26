@@ -8,7 +8,10 @@ const generateToken = (id) => {
 
 exports.registerUser = async (req, res) => {
     
-    const { fullName, email, password, profileImageUrl } = req.body;
+    const { fullName, email, password } = req.body;
+    
+    // Get profile image URL from uploaded file or from body
+    const profileImageUrl = req.file ? req.file.location : req.body.profileImageUrl;
 
     if(!req.body){
         return res.status(400).json({ message: "Request Body is empty" });
@@ -69,7 +72,10 @@ exports.getUserInfo = async (req, res) => {
 }
 
 exports.updateUserInfo = async (req, res) => {
-    const { fullName, profileImageUrl, password, email } = req.body;
+    const { fullName, password, email } = req.body;
+    
+    // Get profile image URL from uploaded file or from body
+    const newProfileImageUrl = req.file ? req.file.location : req.body.profileImageUrl;
 
     try {
         const user = await User.findById(req.user.id);
@@ -79,12 +85,12 @@ exports.updateUserInfo = async (req, res) => {
 
         // Update fields if provided
         if(fullName) user.fullName = fullName;
-        if(profileImageUrl) {
+        if(newProfileImageUrl) {
             // Delete old image from S3 if exists
             if(user.profileImageUrl) {
                 await deleteImageFromS3(user.profileImageUrl);
             }
-            user.profileImageUrl = profileImageUrl;
+            user.profileImageUrl = newProfileImageUrl;
         }
         if(email) {
             // Check if email is already taken by another user
