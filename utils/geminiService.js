@@ -11,7 +11,7 @@ const getFinancialSuggestion = async (userData) => {
     try {
         console.log("generating financial suggestion...");
 
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-002" });
 
         const { totalExpenses, totalIncome, expensesByCategory, recentExpenses } = userData;
         
@@ -58,7 +58,7 @@ const getChatbotResponse = async (userMessage, userData, conversationHistory = [
     try {
         console.log("generating chatbot response...");
 
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-002" });
         const { totalExpenses, totalIncome, expensesByCategory } = userData;
 
         // build context with user's financial info
