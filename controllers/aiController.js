@@ -24,29 +24,48 @@ const getDailySuggestion = async (req, res) => {
         });
 
         // Calculate totals
-        const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-        const totalIncome = incomes.reduce((sum, inc) => sum + inc.amount, 0);
+        const totalExpenses = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+        const totalIncome = incomes.reduce((sum, inc) => sum + (inc.amount || 0), 0);
 
         // Group expenses by category
         const expensesByCategory = expenses.reduce((acc, exp) => {
-            const existing = acc.find(item => item.category === exp.category);
+            if (!exp || !exp.category) return acc;
+            
+            const existing = acc.find(item => item && item.category === exp.category);
             if (existing) {
-                existing.total += exp.amount;
+                existing.total += exp.amount || 0;
             } else {
-                acc.push({ category: exp.category, total: exp.amount });
+                acc.push({ 
+                    category: exp.category, 
+                    total: exp.amount || 0 
+                });
             }
             return acc;
         }, []);
 
         // Sort categories by spending (highest first)
-        expensesByCategory.sort((a, b) => b.total - a.total);
+        expensesByCategory.sort((a, b) => (b?.total || 0) - (a?.total || 0));
+
+        // Prepare recent expenses data
+        const recentExpenses = expenses.slice(0, 10).map(exp => ({
+            category: exp.category || 'Uncategorized',
+            amount: exp.amount || 0,
+            date: exp.date || new Date()
+        }));
+
+        console.log('Sending data to Gemini service:', {
+            totalExpenses,
+            totalIncome,
+            expensesByCategory: expensesByCategory.slice(0, 3), // Log first 3 categories
+            recentExpenses: recentExpenses.slice(0, 2) // Log first 2 recent expenses
+        });
 
         // Prepare data for AI
         const userData = {
             totalExpenses,
             totalIncome,
             expensesByCategory,
-            recentExpenses: expenses.slice(0, 10) // Last 10 expenses
+            recentExpenses
         };
 
         // Generate AI suggestion
