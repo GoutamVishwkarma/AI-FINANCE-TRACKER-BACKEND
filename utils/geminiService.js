@@ -1,20 +1,21 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// Initialize Gemini AI
+if (!process.env.GEMINI_API_KEY) {
+    console.error("GEMINI_API_KEY not found in environment");
+    throw new Error("Missing GEMINI_API_KEY");
+}
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-/**
- * Get AI-powered financial suggestion based on user's expense data
- * @param {Object} userData - User's financial data
- * @returns {Promise<string>} AI-generated suggestion
- */
 const getFinancialSuggestion = async (userData) => {
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        console.log("generating financial suggestion...");
 
-        // Build context from user data
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
         const { totalExpenses, totalIncome, expensesByCategory, recentExpenses } = userData;
         
+        // build prompt with user's financial data
         const prompt = `You are a friendly and helpful personal finance advisor. Analyze the following financial data and provide ONE practical, actionable suggestion to help improve spending habits. Keep it short (2-3 sentences), friendly, and specific.
 
 Financial Summary:
@@ -34,31 +35,33 @@ ${recentExpenses && recentExpenses.length > 0
 
 Provide a personalized tip to help manage money better. Focus on one specific area for improvement.`;
 
+        console.log("calling gemini api...");
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const suggestion = response.text();
         
+        if (!suggestion || suggestion.trim().length === 0) {
+            throw new Error("got empty response from gemini");
+        }
+
+        console.log("suggestion generated");
         return suggestion.trim();
+
     } catch (error) {
-        console.error("Error generating financial suggestion:", error);
-        throw new Error("Failed to generate AI suggestion");
+        console.error("error in getFinancialSuggestion:", error.message);
+        if (error.status) console.error("status:", error.status);
+        throw new Error(`failed to generate suggestion: ${error.message}`);
     }
 };
 
-/**
- * Handle chatbot conversation about personal finances
- * @param {string} userMessage - User's message
- * @param {Object} userData - User's financial data for context
- * @param {Array} conversationHistory - Previous conversation messages
- * @returns {Promise<string>} AI response
- */
 const getChatbotResponse = async (userMessage, userData, conversationHistory = []) => {
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        console.log("generating chatbot response...");
 
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const { totalExpenses, totalIncome, expensesByCategory } = userData;
 
-        // Build context for the chatbot
+        // build context with user's financial info
         let contextPrompt = `You are a friendly personal finance assistant helping users manage their money. Be conversational, helpful, and encouraging.
 
 User's Financial Context:
@@ -84,10 +87,16 @@ Provide a helpful, friendly response. Keep it concise (3-4 sentences max) and ac
         const response = await result.response;
         const botReply = response.text();
         
+        if (!botReply || botReply.trim().length === 0) {
+            throw new Error("empty response from chatbot");
+        }
+
+        console.log("chatbot response ready");
         return botReply.trim();
+
     } catch (error) {
-        console.error("Error generating chatbot response:", error);
-        throw new Error("Failed to generate chatbot response");
+        console.error("error in getChatbotResponse:", error.message);
+        throw new Error(`chatbot failed: ${error.message}`);
     }
 };
 
