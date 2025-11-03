@@ -2,10 +2,7 @@ const { getFinancialSuggestion, getChatbotResponse } = require("../utils/geminiS
 const Expense = require("../models/Expense");
 const Income = require("../models/Income");
 
-/**
- * Get personalized AI financial suggestion
- * This generates a new suggestion each time based on current financial data
- */
+
 const getDailySuggestion = async (req, res) => {
     try {
         const userId = req.user._id;
