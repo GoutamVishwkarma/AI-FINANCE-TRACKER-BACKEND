@@ -1,31 +1,39 @@
 const { getFinancialSuggestion, getChatbotResponse } = require("../utils/geminiService");
 const Expense = require("../models/Expense");
 const Income = require("../models/Income");
-
+const { Types } = require("mongoose");
 
 const getDailySuggestion = async (req, res) => {
     try {
         const userId = req.user._id;
+        const userObjectId = new Types.ObjectId(String(userId));
 
         // Get current month's data
         const currentDate = new Date();
         const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
         const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
-        // Fetch user's financial data
+        const dateFilter = { $gte: startOfMonth, $lte: endOfMonth };
+
+        // Fetch user's financial data for the current month
         const expenses = await Expense.find({
-            userId,
-            date: { $gte: startOfMonth, $lte: endOfMonth }
+            userId: userObjectId,
+            date: dateFilter
         }).sort({ date: -1 });
 
-        const incomes = await Income.find({
-            userId,
-            date: { $gte: startOfMonth, $lte: endOfMonth }
-        });
+        // Use aggregation to calculate totals for the current month
+        const totalExpensesResult = await Expense.aggregate([
+            { $match: { userId: userObjectId, date: dateFilter } },
+            { $group: { _id: null, total: { $sum: "$amount" } } }
+        ]);
 
-        // Calculate totals
-        const totalExpenses = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
-        const totalIncome = incomes.reduce((sum, inc) => sum + (inc.amount || 0), 0);
+        const totalIncomeResult = await Income.aggregate([
+            { $match: { userId: userObjectId, date: dateFilter } },
+            { $group: { _id: null, total: { $sum: "$amount" } } }
+        ]);
+
+        const totalExpenses = totalExpensesResult[0]?.total || 0;
+        const totalIncome = totalIncomeResult[0]?.total || 0;
 
         // Group expenses by category
         const expensesByCategory = expenses.reduce((acc, exp) => {
