@@ -11,29 +11,46 @@ const getFinancialSuggestion = async (userData) => {
     try {
         console.log("generating financial suggestion...");
 
-        const { totalExpenses, totalIncome, expensesByCategory, recentExpenses } = userData;
+        const { totalExpenses, totalIncome, expensesByCategory, recentTransactions, topCategories } = userData;
+        const savings = Math.max(0, (totalIncome || 0) - (totalExpenses || 0));
+        const savingsRate = totalIncome > 0 ? Math.round((savings / totalIncome) * 100) : 0;
         
-        // build prompt with user's financial data
-        const prompt = `You are a friendly and helpful personal finance advisor. Analyze the following financial data and provide ONE practical, actionable suggestion to help improve spending habits. Keep it short (2-3 sentences), friendly, and specific.
+        // Calculate average spending per day
+        const daysInMonth = 30; // Standard month for calculation
+        const dailySpending = totalExpenses / daysInMonth;
+        
+        // Build prompt with enhanced financial data
+        const prompt = `You are a friendly and helpful personal finance advisor. Analyze the following financial data and provide a personalized, actionable suggestion to help improve financial health. 
 
-Financial Summary:
-- Total Monthly Income: ₹${totalIncome || 0}
-- Total Monthly Expenses: ₹${totalExpenses || 0}
-- Savings: ₹${(totalIncome || 0) - (totalExpenses || 0)}
+Financial Snapshot:
+- Monthly Income: ₹${totalIncome || 0}
+- Monthly Expenses: ₹${totalExpenses || 0}
+- Monthly Savings: ₹${savings} (${savingsRate}% of income)
+- Daily Average Spending: ₹${dailySpending.toFixed(2)}
 
-Expense Breakdown:
-${expensesByCategory && expensesByCategory.length > 0 
-    ? expensesByCategory.map(cat => `- ${cat.category}: ₹${cat.total}`).join('\n')
-    : '- No expense data available'}
+Top Spending Categories:
+${topCategories && topCategories.length > 0 
+    ? topCategories.map((cat, index) => 
+        `${index + 1}. ${cat.category}: ₹${cat.total} (${cat.percentage}% of expenses)`
+      ).join('\n')
+    : '- No category data available'}
 
-Recent Expenses:
-${recentExpenses && recentExpenses.length > 0 
-    ? recentExpenses.slice(0, 5).map(exp => `- ${exp.category}: ₹${exp.amount} (${new Date(exp.date).toLocaleDateString()})`).join('\n')
-    : '- No recent expenses'}
+Recent Transactions:
+${recentTransactions && recentTransactions.length > 0 
+    ? recentTransactions.slice(0, 5).map(tx => 
+        `- ${tx.type === 'expense' ? '🛒' : '💰'} ${tx.category || 'Uncategorized'}: ₹${tx.amount} (${new Date(tx.date).toLocaleDateString()})`
+      ).join('\n')
+    : '- No recent transactions'}
 
-Provide a personalized tip to help manage money better. Focus on one specific area for improvement.`;
+Please provide a personalized financial suggestion that:
+1. Acknowledges their current financial position
+2. Highlights one key area for improvement
+3. Provides a specific, actionable tip
+4. Is encouraging and positive
+5. Is 2-3 sentences maximum
 
-        console.log("calling gemini api...");
+Focus on their top spending categories and suggest practical ways to optimize those expenses while maintaining quality of life.`;
+
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt
@@ -45,11 +62,9 @@ Provide a personalized tip to help manage money better. Focus on one specific ar
             throw new Error("got empty response from gemini");
         }
 
-        console.log("suggestion generated");
         return suggestion.trim();
 
     } catch (error) {
-        console.error("error in getFinancialSuggestion:", error.message);
         if (error.status) console.error("status:", error.status);
         throw new Error(`failed to generate suggestion: ${error.message}`);
     }
